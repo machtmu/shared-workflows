@@ -1,4 +1,4 @@
-name: kicad-export
+name: test2
 
 on:
   workflow_call:
@@ -10,99 +10,179 @@ on:
 
 jobs:
   job:
-    runs-on: ubuntu-latest
     permissions:
       contents: write
-
-    # Run all steps directly inside the KiCad container
-    container:
-      image: kicad/kicad:nightly-full
-      options: --platform=linux/amd64
-
+    runs-on: ubuntu-latest
     steps:
-      # 1) GitHub App token
+      # 1) Retrieve the GitHub App token
       - id: create_app_token
         uses: tibdex/github-app-token@v2.1.0
         with:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
 
-      # 2) Check out repository (no saved credentials)
+      # 2) Check out the repository so we can modify files
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           persist-credentials: false
-
-      # 3) Install SVG→PNG tool (small + fast)
-      - name: Install SVG to PNG converter
+  
+            
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
+  
+      - name: Pull KiCad Docker image
         run: |
-          apt-get update
-          apt-get install -y --no-install-recommends librsvg2-bin
-          apt-get clean
-          rm -rf /var/lib/apt/lists/*
-
-      # 4) Run KiCad CLI exports
-      - name: Export KiCad images and STEP
+          echo "Pulling KiCad Docker image..."
+          docker pull kicad/kicad:nightly-full
+  
+      - name: Set directory permissions
         run: |
-          set -e
+          echo "Setting directory permissions to 777..."
+          sudo chmod -R 777 .
+  
+      # Run KiCad Docker container to export files
+      - name: Export schematic, PCB, and 3D model
+        run: |
+          echo "Exporting schematic, PCB, and 3D model..."
+          docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace kicad/kicad:nightly-full bash -c "
+            export KICAD8_3DMODEL_DIR=/usr/share/kicad/3dmodels/
+            export KICAD9_3DMODEL_DIR=/usr/share/kicad/3dmodels/
+      
+            # Export schematic
+            mkdir -p images
+            kicad-cli sch export svg -o 'images/sch' kicad/*.kicad_sch
+            mv images/sch/*.svg images/sch.svg
+            rm -r images/sch
+      
+            # Export PCB front
+            kicad-cli pcb export svg --mode-single -o 'images/pcbf.svg' --page-size-mode 2 --exclude-drawing-sheet --layers 'F.Cu,F.SilkS,F.Mask,Edge.Cuts' kicad/*.kicad_pcb
+      
+            # Export PCB back
+            kicad-cli pcb export svg --mode-single -o 'images/pcbb.svg' --page-size-mode 2 -m --exclude-drawing-sheet --layers 'B.Cu,B.SilkS,B.Mask,Edge.Cuts' kicad/*.kicad_pcb
+      
+            # Export 3D model (tolerate warnings, check output)
+            kicad-cli pcb export step --output 'images/board.step' kicad/*.kicad_pcb || echo \"Warning: STEP export encountered issues, checking output...\"
+            if [ -f images/board.step ]; then
+              echo \"STEP file created successfully.\"
+            else
+              echo \"Error: STEP file not created.\"
+              exit 1
+            fi
+          "
+  
+  
+      - name: Export files using KiCad Docker container
+        run: |
+          echo "Exporting schematic, PCB, and 3D model..."
+          docker run --rm -v "$(pwd):/workspace" kicad/kicad:nightly-full bash -c '
+            set -e
+  
+            export KICAD8_3DMODEL_DIR=/usr/share/kicad/3dmodels/
+            
+            cd /workspace
+            mkdir -p images
+  
+            # Export VRML file from KiCAD
+            kicad-cli pcb export vrml --output "images/board.wrl" kicad/*.kicad_pcb
+  
+            # Step 2: Install Rayhunter
+            echo "Installing Rayhunter..."
+            mkdir -p ~/Downloads
+            cd ~/Downloads
+            sudo apt-get update
+            sudo apt-get install -y wget libpng-dev
+            wget https://github.com/castle-engine/rayhunter/releases/download/snapshot/rayhunter-1.4.0-linux-x86_64.tar.gz
+            tar xzvf rayhunter-1.4.0-linux-x86_64.tar.gz
+            sudo install -m 0755 ~/Downloads/rayhunter/rayhunter /usr/local/bin/rayhunter
+  
+            # Add lighting effects to VRML FRONT
+            cd /workspace/images
+            head -1 "board.wrl" > "board.front.wrl"
+            cat <<EOF >> "board.front.wrl"
+          Transform {
+              children [
+                DirectionalLight {
+                    on TRUE
+                    intensity 0.5
+                    ambientIntensity 0
+                    color 1.0 1.0 1.0
+                    direction 0.0 0.0 1.0
+                }
+          EOF
+            cat "board.wrl" >> "board.front.wrl"
+            echo "] }" >> "board.front.wrl"
+  
+            # Convert to PNG using Rayhunter FRONT
+            echo "Converting /workspace/images/board.front.wrl to board.front.png..."
+            rayhunter classic 7 \
+                4320 4320 \
+                "/workspace/images/board.front.wrl" \
+                "/workspace/images/board.front.png" \
+                --camera-pos 0 0 6 \
+                --camera-dir 0 0 -1 \
+                --scene-bg-color 0 0 1 \
+                --ortho -2 -2 2 2
+                
+            # Add lighting effects to VRML BACK
+            cd /workspace/images
+            head -1 "board.wrl" > "board.back.wrl"
+            cat <<EOF >> "board.back.wrl"
+          Transform {
+              children [
+                DirectionalLight {
+                    on TRUE
+                    intensity 0.5
+                    ambientIntensity 0
+                    color 1.0 1.0 1.0
+                    direction 0.0 0.0 1.0
+                }   
+          EOF
+            cat "board.wrl" >> "board.back.wrl"
+            echo "] }" >> "board.back.wrl"
+  
+            # Convert to PNG using Rayhunter BACK
+            echo "Converting /workspace/images/board.back.wrl to board.back.png..."
+            rayhunter classic 7 \
+                4320 4320 \
+                "board.back.wrl" \
+                "board.back.png" \
+                --camera-pos 0 0 -6 \
+                --camera-dir 0 0 1 \
+                --scene-bg-color 0 0 1 \
+                --ortho -2 -2 2 2
+             
+            # Step 5: Crop Imgae
+            sudo apt install -y sed
+            sudo apt install -y inkscape
+            
+            convert /workspace/images/board.front.png -trim -transparent blue /workspace/images/board.front.png
+            convert /workspace/images/board.back.png -trim -transparent blue /workspace/images/board.back.png
+            sed -i 's/fill="white"/fill="none"/g' /workspace/images/pcbf.svg
+            sed -i 's/fill="white"/fill="none"/g' /workspace/images/pcbb.svg
+            
+            inkscape --export-area-drawing --export-filename=pcbf.svg pcbf.svg
+            inkscape --export-area-drawing --export-filename=pcbb.svg pcbb.svg
+  
+  
+            echo "Script execution completed."
+          '
+          
 
-          export KICAD8_3DMODEL_DIR=/usr/share/kicad/3dmodels/
-          export KICAD9_3DMODEL_DIR=/usr/share/kicad/3dmodels/
-
-          mkdir -p images
-
-          BOARD_FILE="kicad/recovery.kicad_pcb"
-          SCH_FILE="kicad/recovery.kicad_sch"
-
-          echo "Rendering 3D board (front)..."
-          kicad-cli pcb render \
-            --output images/board-front.png \
-            --width 1600 --height 900 \
-            --quality high \
-            --floor \
-            "$BOARD_FILE"
-
-          echo "Rendering 3D board (back)..."
-          kicad-cli pcb render \
-            --output images/board-back.png \
-            --side bottom \
-            --width 1600 --height 900 \
-            --quality high \
-            --floor \
-            "$BOARD_FILE"
-
-          echo "Exporting schematic PNG..."
-          kicad-cli sch export png \
-            --output images/schematic.png \
-            "$SCH_FILE"
-
-          echo "Exporting footprints SVG..."
-          kicad-cli pcb export svg \
-            --output images/footprints.svg \
-            "$BOARD_FILE"
-
-          echo "Converting footprints SVG to PNG..."
-          rsvg-convert images/footprints.svg -o images/footprints.png
-
-          echo "Exporting STEP model..."
-          kicad-cli pcb export step \
-            --output images/board.step \
-            "$BOARD_FILE"
-
-      # 5) Configure Git
+      # 3) Configure Git user/email
       - name: Configure Git
         run: |
           git config user.name "KiCad Export App"
           git config user.email "123456+MyKiCadApp[bot]@users.noreply.github.com"
 
-      # 6) Commit and push changes using the App token
+      # 5) Commit and push changes to main using the GitHub App token
       - name: Commit changes using the App token
         run: |
           git add images/*
-          git commit -m "Update KiCad images and STEP" || echo "No changes to commit."
+          git commit -m "Update images" || echo "No changes to commit."
           git remote set-url origin "https://x-access-token:${{ steps.create_app_token.outputs.token }}@github.com/${{ github.repository }}.git"
           git push origin main
 
-      # 7) Notify completion
+      # 6) Notify completion
       - name: Notify completion
-        run: echo "Updated images and pushed changes to the repository."
+        run: echo "Updates images and pushed changes to the repository."
