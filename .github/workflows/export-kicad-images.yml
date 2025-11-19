@@ -1,4 +1,4 @@
-name: test2
+name: kicad-export
 
 on:
   workflow_call:
@@ -10,75 +10,99 @@ on:
 
 jobs:
   job:
+    runs-on: ubuntu-latest
     permissions:
       contents: write
-    runs-on: ubuntu-latest
+
+    # Run all steps directly inside the KiCad container
+    container:
+      image: kicad/kicad:nightly-full
+      options: --platform=linux/amd64
+
     steps:
-      # 1) Retrieve the GitHub App token
+      # 1) GitHub App token
       - id: create_app_token
         uses: tibdex/github-app-token@v2.1.0
         with:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
 
-      # 2) Check out the repository so we can modify files
+      # 2) Check out repository (no saved credentials)
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
-  
-            
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v2
-  
-      - name: Pull KiCad Docker image
-        run: |
-          echo "Pulling KiCad Docker image..."
-          docker pull kicad/kicad:nightly-full
-  
-      - name: Set directory permissions
-        run: |
-          echo "Setting directory permissions to 777..."
-          sudo chmod -R 777 .
-  
-      # Run KiCad Docker container to export files
-      - name: Export schematic, PCB, and 3D model
-        run: |
-          echo "Exporting schematic, PCB, and 3D model..."
-          docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace kicad/kicad:nightly-full bash -c "
-            export KICAD8_3DMODEL_DIR=/usr/share/kicad/3dmodels/
-            export KICAD9_3DMODEL_DIR=/usr/share/kicad/3dmodels/
-      
-            mkdir -p images
 
-            # Export schematic
-            kicad-cli sch export svg -o 'images/sch.svg' kicad/*.kicad_sch
-      
-            # Export PCB front
-            kicad-cli pcb export svg --mode-single -o 'images/pcbf.svg' --page-size-mode 2 --exclude-drawing-sheet --layers 'F.Cu,F.SilkS,F.Mask,Edge.Cuts' kicad/*.kicad_pcb
-      
-            # Export PCB back
-            kicad-cli pcb export svg --mode-single -o 'images/pcbb.svg' --page-size-mode 2 -m --exclude-drawing-sheet --layers 'B.Cu,B.SilkS,B.Mask,Edge.Cuts' kicad/*.kicad_pcb
-      
-            # Export 3D model render
-            kicad-cli pcb render -o images/pcb_3d.png kicad/*.kicad_pcb
+      # 3) Install SVG→PNG tool (small + fast)
+      - name: Install SVG to PNG converter
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends librsvg2-bin
+          apt-get clean
+          rm -rf /var/lib/apt/lists/*
 
-          "
+      # 4) Run KiCad CLI exports
+      - name: Export KiCad images and STEP
+        run: |
+          set -e
 
-      # 3) Configure Git user/email
+          export KICAD8_3DMODEL_DIR=/usr/share/kicad/3dmodels/
+          export KICAD9_3DMODEL_DIR=/usr/share/kicad/3dmodels/
+
+          mkdir -p images
+
+          BOARD_FILE="kicad/recovery.kicad_pcb"
+          SCH_FILE="kicad/recovery.kicad_sch"
+
+          echo "Rendering 3D board (front)..."
+          kicad-cli pcb render \
+            --output images/board-front.png \
+            --width 1600 --height 900 \
+            --quality high \
+            --floor \
+            "$BOARD_FILE"
+
+          echo "Rendering 3D board (back)..."
+          kicad-cli pcb render \
+            --output images/board-back.png \
+            --side bottom \
+            --width 1600 --height 900 \
+            --quality high \
+            --floor \
+            "$BOARD_FILE"
+
+          echo "Exporting schematic PNG..."
+          kicad-cli sch export png \
+            --output images/schematic.png \
+            "$SCH_FILE"
+
+          echo "Exporting footprints SVG..."
+          kicad-cli pcb export svg \
+            --output images/footprints.svg \
+            "$BOARD_FILE"
+
+          echo "Converting footprints SVG to PNG..."
+          rsvg-convert images/footprints.svg -o images/footprints.png
+
+          echo "Exporting STEP model..."
+          kicad-cli pcb export step \
+            --output images/board.step \
+            "$BOARD_FILE"
+
+      # 5) Configure Git
       - name: Configure Git
         run: |
           git config user.name "KiCad Export App"
           git config user.email "123456+MyKiCadApp[bot]@users.noreply.github.com"
 
-      # 5) Commit and push changes to main using the GitHub App token
+      # 6) Commit and push changes using the App token
       - name: Commit changes using the App token
         run: |
           git add images/*
-          git commit -m "Update images" || echo "No changes to commit."
+          git commit -m "Update KiCad images and STEP" || echo "No changes to commit."
           git remote set-url origin "https://x-access-token:${{ steps.create_app_token.outputs.token }}@github.com/${{ github.repository }}.git"
           git push origin main
 
-      # 6) Notify completion
+      # 7) Notify completion
       - name: Notify completion
-        run: echo "Updates images and pushed changes to the repository."
+        run: echo "Updated images and pushed changes to the repository."
