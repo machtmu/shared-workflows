@@ -51,7 +51,9 @@ jobs:
 
             # Export schematic
             mkdir -p images
-            kicad-cli sch export svg -o 'images/sch.svg' kicad/*.kicad_sch
+            kicad-cli sch export svg -o 'images/sch' kicad/*.kicad_sch
+            mv images/sch/*.svg images/sch.svg
+            rm -r images/sch
 
             # Export PCB front (2D)
             kicad-cli pcb export svg --mode-single -o 'images/pcbf.svg' --page-size-mode 2 --exclude-drawing-sheet --layers 'F.Cu,F.SilkS,F.Mask,Edge.Cuts' kicad/*.kicad_pcb
