@@ -48,17 +48,23 @@ jobs:
           docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace kicad/kicad:nightly-full bash -c "
             export KICAD8_3DMODEL_DIR=/usr/share/kicad/3dmodels/
             export KICAD9_3DMODEL_DIR=/usr/share/kicad/3dmodels/
-      
+
             # Export schematic
             mkdir -p images
             kicad-cli sch export svg -o 'images/sch.svg' kicad/*.kicad_sch
-      
-            # Export PCB front
+
+            # Export PCB front (2D)
             kicad-cli pcb export svg --mode-single -o 'images/pcbf.svg' --page-size-mode 2 --exclude-drawing-sheet --layers 'F.Cu,F.SilkS,F.Mask,Edge.Cuts' kicad/*.kicad_pcb
-      
-            # Export PCB back
+
+            # Export PCB back (2D)
             kicad-cli pcb export svg --mode-single -o 'images/pcbb.svg' --page-size-mode 2 -m --exclude-drawing-sheet --layers 'B.Cu,B.SilkS,B.Mask,Edge.Cuts' kicad/*.kicad_pcb
-      
+
+            # Render PCB front (3D raytraced PNG)
+            kicad-cli pcb render --output 'images/pcbf.png' --width 1600 --height 900 --side top kicad/*.kicad_pcb
+
+            # Render PCB back (3D raytraced PNG)
+            kicad-cli pcb render --output 'images/pcbb.png' --width 1600 --height 900 --side bottom kicad/*.kicad_pcb
+
             # Export 3D model (tolerate warnings, check output)
             kicad-cli pcb export step --output 'images/board.step' kicad/*.kicad_pcb || echo \"Warning: STEP export encountered issues, checking output...\"
             if [ -f images/board.step ]; then
@@ -69,7 +75,6 @@ jobs:
             fi
           "
 
-          
 
       # 3) Configure Git user/email
       - name: Configure Git
