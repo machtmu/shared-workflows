@@ -51,9 +51,7 @@ jobs:
       
             # Export schematic
             mkdir -p images
-            kicad-cli sch export svg -o 'images/sch' kicad/*.kicad_sch
-            mv images/sch/*.svg images/sch.svg
-            rm -r images/sch
+            kicad-cli sch export svg -o 'images/sch.svg' kicad/*.kicad_sch
       
             # Export PCB front
             kicad-cli pcb export svg --mode-single -o 'images/pcbf.svg' --page-size-mode 2 --exclude-drawing-sheet --layers 'F.Cu,F.SilkS,F.Mask,Edge.Cuts' kicad/*.kicad_pcb
@@ -70,103 +68,7 @@ jobs:
               exit 1
             fi
           "
-  
-  
-      - name: Export files using KiCad Docker container
-        run: |
-          echo "Exporting schematic, PCB, and 3D model..."
-          docker run --rm -v "$(pwd):/workspace" kicad/kicad:nightly-full bash -c '
-            set -e
-  
-            export KICAD8_3DMODEL_DIR=/usr/share/kicad/3dmodels/
-            
-            cd /workspace
-            mkdir -p images
-  
-            # Export VRML file from KiCAD
-            kicad-cli pcb export vrml --output "images/board.wrl" kicad/*.kicad_pcb
-  
-            # Step 2: Install Rayhunter
-            echo "Installing Rayhunter..."
-            mkdir -p ~/Downloads
-            cd ~/Downloads
-            sudo apt-get update
-            sudo apt-get install -y wget libpng-dev
-            wget https://github.com/castle-engine/rayhunter/releases/download/snapshot/rayhunter-1.4.0-linux-x86_64.tar.gz
-            tar xzvf rayhunter-1.4.0-linux-x86_64.tar.gz
-            sudo install -m 0755 ~/Downloads/rayhunter/rayhunter /usr/local/bin/rayhunter
-  
-            # Add lighting effects to VRML FRONT
-            cd /workspace/images
-            head -1 "board.wrl" > "board.front.wrl"
-            cat <<EOF >> "board.front.wrl"
-          Transform {
-              children [
-                DirectionalLight {
-                    on TRUE
-                    intensity 0.5
-                    ambientIntensity 0
-                    color 1.0 1.0 1.0
-                    direction 0.0 0.0 1.0
-                }
-          EOF
-            cat "board.wrl" >> "board.front.wrl"
-            echo "] }" >> "board.front.wrl"
-  
-            # Convert to PNG using Rayhunter FRONT
-            echo "Converting /workspace/images/board.front.wrl to board.front.png..."
-            rayhunter classic 7 \
-                4320 4320 \
-                "/workspace/images/board.front.wrl" \
-                "/workspace/images/board.front.png" \
-                --camera-pos 0 0 6 \
-                --camera-dir 0 0 -1 \
-                --scene-bg-color 0 0 1 \
-                --ortho -2 -2 2 2
-                
-            # Add lighting effects to VRML BACK
-            cd /workspace/images
-            head -1 "board.wrl" > "board.back.wrl"
-            cat <<EOF >> "board.back.wrl"
-          Transform {
-              children [
-                DirectionalLight {
-                    on TRUE
-                    intensity 0.5
-                    ambientIntensity 0
-                    color 1.0 1.0 1.0
-                    direction 0.0 0.0 1.0
-                }   
-          EOF
-            cat "board.wrl" >> "board.back.wrl"
-            echo "] }" >> "board.back.wrl"
-  
-            # Convert to PNG using Rayhunter BACK
-            echo "Converting /workspace/images/board.back.wrl to board.back.png..."
-            rayhunter classic 7 \
-                4320 4320 \
-                "board.back.wrl" \
-                "board.back.png" \
-                --camera-pos 0 0 -6 \
-                --camera-dir 0 0 1 \
-                --scene-bg-color 0 0 1 \
-                --ortho -2 -2 2 2
-             
-            # Step 5: Crop Imgae
-            sudo apt install -y sed
-            sudo apt install -y inkscape
-            
-            convert /workspace/images/board.front.png -trim -transparent blue /workspace/images/board.front.png
-            convert /workspace/images/board.back.png -trim -transparent blue /workspace/images/board.back.png
-            sed -i 's/fill="white"/fill="none"/g' /workspace/images/pcbf.svg
-            sed -i 's/fill="white"/fill="none"/g' /workspace/images/pcbb.svg
-            
-            inkscape --export-area-drawing --export-filename=pcbf.svg pcbf.svg
-            inkscape --export-area-drawing --export-filename=pcbb.svg pcbb.svg
-  
-  
-            echo "Script execution completed."
-          '
+
           
 
       # 3) Configure Git user/email
