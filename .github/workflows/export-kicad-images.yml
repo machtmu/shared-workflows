@@ -112,13 +112,6 @@ jobs:
                 --floor \
                 --perspective \
                 --background transparent \
-                --rotate '135,0,45' \
-                --zoom 2 \
-                --light-top 0.9 \
-                --light-side 0.4 \
-                --light-camera 0.2 \
-                --light-bottom 0.05 \
-                --light-side-elevation 40 \
                 kicad/*.kicad_pcb
 
               # Export high-detail 3D STEP model
