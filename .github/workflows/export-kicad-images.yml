@@ -26,51 +26,123 @@ jobs:
         uses: actions/checkout@v3
         with:
           persist-credentials: false
-  
-            
+
       - name: Set up Docker
         uses: docker/setup-buildx-action@v2
-  
-      - name: Pull KiCad Docker image
+
+      - name: Pull KiCad 9.0 Docker image
         run: |
-          echo "Pulling KiCad Docker image..."
-          docker pull kicad/kicad:nightly-full
-  
+          echo "Pulling KiCad 9.0 Docker image..."
+          docker pull kicad/kicad:9.0
+
       - name: Set directory permissions
         run: |
           echo "Setting directory permissions to 777..."
           sudo chmod -R 777 .
-  
-      # Run KiCad Docker container to export files
-      - name: Export schematic, PCB, and 3D model
+
+      # Install ImageMagick on the runner for cropping
+      - name: Install ImageMagick
         run: |
-          echo "Exporting schematic, PCB, and 3D model..."
-          docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace kicad/kicad:nightly-full bash -c "
-            export KICAD8_3DMODEL_DIR=/usr/share/kicad/3dmodels/
-            export KICAD9_3DMODEL_DIR=/usr/share/kicad/3dmodels/
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
 
-            # Export schematic
-            mkdir -p images
-            kicad-cli sch export svg -o 'images/sch' kicad/*.kicad_sch
-            mv images/sch/*.svg images/sch.svg
-            rm -r images/sch
+      # Run KiCad Docker container to export files
+      - name: Export schematic, PCB, 3D render, and STEP
+        run: |
+          echo "Exporting schematic, PCB, 3D renders, and 3D model..."
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            kicad/kicad:9.0 \
+            bash -c "
+              # Make sure both KiCad 8 and 9 3D env vars are set (just in case)
+              export KICAD8_3DMODEL_DIR=/usr/share/kicad/3dmodels/
+              export KICAD9_3DMODEL_DIR=/usr/share/kicad/3dmodels/
 
-            # Export PCB front (2D)
-            kicad-cli pcb export svg --mode-single -o 'images/pcbf.svg' --page-size-mode 2 --exclude-drawing-sheet --layers 'F.Cu,F.SilkS,F.Mask,Edge.Cuts' kicad/*.kicad_pcb
+              mkdir -p images
 
-            # Export PCB back (2D)
-            kicad-cli pcb export svg --mode-single -o 'images/pcbb.svg' --page-size-mode 2 -m --exclude-drawing-sheet --layers 'B.Cu,B.SilkS,B.Mask,Edge.Cuts' kicad/*.kicad_pcb
+              # Export schematic
+              kicad-cli sch export svg -o 'images/sch' kicad/*.kicad_sch
+              mv images/sch/*.svg images/sch.svg
+              rm -r images/sch
 
-            # Render PCB front (3D raytraced PNG)
-            kicad-cli pcb render --output 'images/board.front.png' --width 1600 --height 900 --side top kicad/*.kicad_pcb
+              # Export PCB front (2D)
+              kicad-cli pcb export svg --mode-single \
+                -o 'images/pcbf.svg' \
+                --page-size-mode 2 \
+                --exclude-drawing-sheet \
+                --layers 'F.Cu,F.SilkS,F.Mask,Edge.Cuts' \
+                kicad/*.kicad_pcb
 
-            # Render PCB back (3D raytraced PNG)
-            kicad-cli pcb render --output 'images/board.back.png' --width 1600 --height 900 --side bottom kicad/*.kicad_pcb
+              # Export PCB back (2D)
+              kicad-cli pcb export svg --mode-single \
+                -o 'images/pcbb.svg' \
+                --page-size-mode 2 \
+                -m \
+                --exclude-drawing-sheet \
+                --layers 'B.Cu,B.SilkS,B.Mask,Edge.Cuts' \
+                kicad/*.kicad_pcb
 
-            # Export 3D model (tolerate warnings, check output)
-            kicad-cli pcb export step --output 'images/board.step' -f --subst-models --include-tracks --include-pads --include-zones --include-silkscreen  --include-soldermask --fuse-shapes kicad/*.kicad_pcb
-          "
+              # Render PCB front (3D raytraced PNG, nicer lighting)
+              kicad-cli pcb render \
+                --output 'images/board.front.png' \
+                --width 1920 \
+                --height 1080 \
+                --side top \
+                --quality high \
+                --floor \
+                --perspective \
+                --background transparent \
+                --rotate '-45,0,45' \
+                --zoom 2 \
+                --light-top 0.9 \
+                --light-side 0.4 \
+                --light-camera 0.2 \
+                --light-bottom 0.05 \
+                --light-side-elevation 40 \
+                kicad/*.kicad_pcb
 
+              # Render PCB back (3D raytraced PNG, nicer lighting)
+              kicad-cli pcb render \
+                --output 'images/board.back.png' \
+                --width 1920 \
+                --height 1080 \
+                --side bottom \
+                --quality high \
+                --floor \
+                --perspective \
+                --background transparent \
+                --rotate '135,0,45' \
+                --zoom 2 \
+                --light-top 0.9 \
+                --light-side 0.4 \
+                --light-camera 0.2 \
+                --light-bottom 0.05 \
+                --light-side-elevation 40 \
+                kicad/*.kicad_pcb
+
+              # Export high-detail 3D STEP model
+              kicad-cli pcb export step \
+                --output 'images/board.step' \
+                --force \
+                --subst-models \
+                --include-tracks \
+                --include-pads \
+                --include-zones \
+                --include-inner-copper \
+                --include-silkscreen \
+                --include-soldermask \
+                --fuse-shapes \
+                --cut-vias-in-body \
+                --no-optimize-step \
+                kicad/*.kicad_pcb
+            "
+
+      # Crop the rendered 3D board images in-place using ImageMagick
+      - name: Crop rendered board images
+        run: |
+          mogrify -trim +repage images/board.front.png
+          mogrify -trim +repage images/board.back.png
 
       # 3) Configure Git user/email
       - name: Configure Git
@@ -88,4 +160,4 @@ jobs:
 
       # 6) Notify completion
       - name: Notify completion
-        run: echo "Updates images and pushed changes to the repository."
+        run: echo "Updated images and pushed changes to the repository."
