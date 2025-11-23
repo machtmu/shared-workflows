@@ -117,7 +117,6 @@ jobs:
                 --floor \
                 --perspective \
                 --background transparent \
-                --rotate '135,0,45' \
                 --zoom 2 \
                 --light-top 0.9 \
                 --light-side 0.4 \
