@@ -152,8 +152,8 @@ jobs:
               fi
             "
             
-      - name: Set permissions on generated PNGs
-        run: chmod 644 images/board.front.png images/board.back.png
+      - name: Set permissions
+        run: chmod -R 644 images/
         
       # Crop the rendered 3D board images in-place using ImageMagick
       - name: Crop rendered board images
