@@ -45,11 +45,11 @@ jobs:
         run: |
           git clone --depth 1 https://gitlab.com/kicad/libraries/kicad-packages3D.git kicad-packages3D
 
-      # # Install ImageMagick on the runner for cropping
-      # - name: Install ImageMagick
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y imagemagick
+      # Install ImageMagick on the runner for cropping
+      - name: Install ImageMagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
 
       # Run KiCad Docker container to export files
       - name: Export schematic, PCB, 3D render, and STEP
@@ -144,11 +144,11 @@ jobs:
       # - name: Set permissions
       #   run: chmod -R 644 images/
         
-      # # Crop the rendered 3D board images in-place using ImageMagick
-      # - name: Crop rendered board images
-      #   run: |
-      #     mogrify -trim +repage images/board.front.png
-      #     mogrify -trim +repage images/board.back.png
+      # Crop the rendered 3D board images in-place using ImageMagick
+      - name: Crop rendered board images
+        run: |
+          mogrify -trim +repage images/board.front.png
+          mogrify -trim +repage images/board.back.png
 
       # 3) Configure Git user/email
       - name: Configure Git
