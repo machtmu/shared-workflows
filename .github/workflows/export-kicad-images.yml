@@ -129,13 +129,6 @@ jobs:
                 --output 'images/board.step' \
                 --force \
                 --subst-models \
-                # --include-tracks \
-                # --include-pads \
-                # --include-zones \
-                # --include-inner-copper \
-                # --include-silkscreen \
-                # --include-soldermask \
-                # --cut-vias-in-body \
                 kicad/*.kicad_pcb; then
 
                 if [ -f 'images/board.step' ]; then
