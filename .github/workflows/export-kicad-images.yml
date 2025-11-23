@@ -107,8 +107,8 @@ jobs:
               # Render PCB back (3D raytraced PNG, nicer lighting)
               kicad-cli pcb render \
                 --output 'images/board.back.png' \
-                --width 1920 \
-                --height 1080 \
+                --width 3000 \
+                --height 3000 \
                 --side bottom \
                 --quality high \
                 --perspective \
