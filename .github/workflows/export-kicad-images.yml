@@ -95,7 +95,6 @@ jobs:
                 --height 3000 \
                 --side top \
                 --quality high \
-                --floor \
                 --perspective \
                 --background transparent \
                 --light-top 0.9 \
@@ -112,7 +111,6 @@ jobs:
                 --height 1080 \
                 --side bottom \
                 --quality high \
-                --floor \
                 --perspective \
                 --background transparent \
                 --light-top 0.9 \
