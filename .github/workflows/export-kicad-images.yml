@@ -137,9 +137,7 @@ jobs:
                 --include-inner-copper \
                 --include-silkscreen \
                 --include-soldermask \
-                --fuse-shapes \
                 --cut-vias-in-body \
-                --no-optimize-step \
                 kicad/*.kicad_pcb; then
 
                 if [ -f 'images/board.step' ]; then
