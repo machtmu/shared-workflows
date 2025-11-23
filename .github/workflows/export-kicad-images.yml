@@ -98,7 +98,6 @@ jobs:
                 --floor \
                 --perspective \
                 --background transparent \
-                --zoom 2 \
                 --light-top 0.9 \
                 --light-side 0.4 \
                 --light-camera 0.2 \
@@ -116,7 +115,6 @@ jobs:
                 --floor \
                 --perspective \
                 --background transparent \
-                --zoom 2 \
                 --light-top 0.9 \
                 --light-side 0.4 \
                 --light-camera 0.2 \
