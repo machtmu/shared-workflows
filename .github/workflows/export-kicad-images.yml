@@ -117,10 +117,19 @@ jobs:
                 --floor \
                 --perspective \
                 --background transparent \
+                --rotate '135,0,45' \
+                --zoom 2 \
+                --light-top 0.9 \
+                --light-side 0.4 \
+                --light-camera 0.2 \
+                --light-bottom 0.05 \
+                --light-side-elevation 40 \
                 kicad/*.kicad_pcb
 
               # Export high-detail 3D STEP model
-              kicad-cli pcb export step \
+              # Some boards cause 'Wire self-interference' warnings and a non-zero exit,
+              # but still produce a valid STEP file. Treat that as a warning, not a hard failure.
+              if ! kicad-cli pcb export step \
                 --output 'images/board.step' \
                 --force \
                 --subst-models \
@@ -130,8 +139,19 @@ jobs:
                 --include-inner-copper \
                 --include-silkscreen \
                 --include-soldermask \
+                --fuse-shapes \
                 --cut-vias-in-body \
-                kicad/*.kicad_pcb
+                --no-optimize-step \
+                kicad/*.kicad_pcb; then
+
+                if [ -f 'images/board.step' ]; then
+                  echo 'WARNING: kicad-cli pcb export step returned a non-zero exit code,'
+                  echo 'but images/board.step was created. Continuing pipeline.'
+                else
+                  echo 'ERROR: STEP export failed and no images/board.step was created.'
+                  exit 1
+                fi
+              fi
             "
 
       # Crop the rendered 3D board images in-place using ImageMagick
