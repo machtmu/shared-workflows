@@ -40,6 +40,11 @@ jobs:
           echo "Setting directory permissions to 777..."
           sudo chmod -R 777 .
 
+      # Fetch official KiCad 3D models from GitLab
+      - name: Clone KiCad 3D model library
+        run: |
+          git clone --depth 1 https://gitlab.com/kicad/libraries/kicad-packages3D.git kicad-packages3D
+
       # Install ImageMagick on the runner for cropping
       - name: Install ImageMagick
         run: |
@@ -55,9 +60,9 @@ jobs:
             -w /workspace \
             kicad/kicad:9.0 \
             bash -c "
-              # Make sure both KiCad 8 and 9 3D env vars are set (just in case)
-              export KICAD8_3DMODEL_DIR=/usr/share/kicad/3dmodels/
-              export KICAD9_3DMODEL_DIR=/usr/share/kicad/3dmodels/
+              # Point both KiCad 8 and 9 3D env vars at the cloned library
+              export KICAD8_3DMODEL_DIR=/workspace/kicad-packages3D
+              export KICAD9_3DMODEL_DIR=/workspace/kicad-packages3D
 
               mkdir -p images
 
