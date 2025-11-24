@@ -7,23 +7,23 @@
       <td align="center" style="vertical-align: middle;">
         <img src="https://raw.githubusercontent.com/machtmu/4in-sensors/refs/heads/main/images/board.front.png" />
         <br />
-        <a href="PCB-Modules/sensors/"><i>Sensors</i></a>
+        <a href="https://github.com/machtmu/4in-sensors"><i>Sensors</i></a>
       </td>
       <td align="center" style="vertical-align: middle;">
         <img src="https://raw.githubusercontent.com/machtmu/4in-power/refs/heads/main/images/board.front.png" />
         <br />
-        <a href="PCB-Modules/power/"><i>Power</i></a>
+        <a href="https://github.com/machtmu/4in-power"><i>Power</i></a>
       </td>
       <td align="center" style="vertical-align: middle;">
         <img src="https://raw.githubusercontent.com/machtmu/4in-status/refs/heads/main/images/board.front.png" />
         <br />
-        <a href="PCB-Modules/status/"><i>Status</i></a>
+        <a href="https://github.com/machtmu/4in-status"><i>Status</i></a>
       </td>
       <!-- Extra column cell with rowspan -->
       <td rowspan="2" align="center" style="vertical-align: middle;">
         <img src="https://raw.githubusercontent.com/machtmu/4in-backplate/refs/heads/main/images/board.front.png" alt="Longer Image" />
         <br />
-        <a href="PCB-Modules/backplate/"><i>Backplate</i></a>
+        <a href="https://github.com/machtmu/4in-backplate"><i>Backplate</i></a>
       </td>
     </tr>
     <!-- Second Row -->
@@ -31,17 +31,17 @@
       <td align="center" style="vertical-align: middle;">
         <img src="https://raw.githubusercontent.com/machtmu/4in-powersim/refs/heads/main/images/board.front.png" alt="GPS" />
         <br />
-        <a href="PCB-Modules/powersim/"><i>PowerSim</i></a>
+        <a href="https://github.com/machtmu/4in-powersim"><i>PowerSim</i></a>
       </td>
       <td align="center" style="vertical-align: middle;">
         <img src="https://raw.githubusercontent.com/machtmu/4in-recovery/refs/heads/main/images/board.front.png" alt="Recovery" />
         <br />
-        <a href="PCB-Modules/recovery/"><i>Recovery</i></a>
+        <a href="https://github.com/machtmu/4in-recovery"><i>Recovery</i></a>
       </td>
       <td align="center" style="vertical-align: middle;">
         <img src="https://raw.githubusercontent.com/machtmu/4in-antenna/refs/heads/main/images/board.front.png" alt="Antenna" />
         <br />
-        <a href="PCB-Modules/antenna/"><i>Antenna</i></a>
+        <a href="https://github.com/machtmu/4in-antenna"><i>Antenna</i></a>
       </td>
     </tr>
   </table>
