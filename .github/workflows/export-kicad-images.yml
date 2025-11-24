@@ -94,7 +94,7 @@ jobs:
                 --width 3000 \
                 --height 3000 \
                 --side top \
-                --quality high \
+                --quality basic \
                 --background transparent \
                 kicad/*.kicad_pcb
 
@@ -104,7 +104,7 @@ jobs:
                 --width 3000 \
                 --height 3000 \
                 --side bottom \
-                --quality high \
+                --quality basic \
                 --background transparent \
                 kicad/*.kicad_pcb
 
