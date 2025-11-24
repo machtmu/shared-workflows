@@ -49,7 +49,7 @@
 
 
 
-This repository contains a GitHub Actions workflow that automatically exports several assets from a KiCad project. The workflow is intended to run via `workflow_call` and uses a GitHub App for authentication.
+This repository contains a GitHub Actions workflow that automatically exports several assets from a KiCad project. The workflow is intended to run via `workflow_call` and uses a GitHub App for authentication. I used to use rayhunter before kicad cli implemented rendering and it looked a lot better tbh.
 
 The pipeline performs the following tasks:
 
